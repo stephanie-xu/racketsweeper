@@ -1,41 +1,24 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
 #reader(lib "htdp-advanced-reader.ss" "lang")((modname minesweeper) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #t #t none #f () #f)))
-; A point is a (make-point Number Number)
-; and represents a position in the game board with the row and column number specified
-; row and column numbers cannot be less than 1
 (define-struct point [row col])
 (define PT-1 (make-point 1 1))
 (define PT-2 (make-point 2 2))
 (define PT-3 (make-point 1 2))
 (define PT-4 (make-point 2 3))
 
-; A bomb is a (make-bomb Point)
-; and represents a bomb tile at the given position in the game
 (define-struct bomb [pt])
 (define BOMB-1 (make-bomb PT-1))
 (define BOMB-2 (make-bomb PT-2))
 
-; A land is a (make-land Point Boolean)
-; and represents a land tile at the given position in the game, and whether it has been clicked by the player
 (define-struct land [pt clicked])
 (define LAND-1 (make-land PT-3 #f))
 (define LAND-2 (make-land PT-4 #t))
 
-; A GameTile is one of:
-; - Bomb
-; - Land
-; and represents a tile in the game 
-
-; generate-random: Number Number -> GameTile
-; generates either a bomb or land tile at the given position,
-; with a 40% chance to generate a bomb and 60% chance to generate a land tile
 (define (generate-random row col)
   (local [(define r (random 5))]
     (if (or (= 0 r) (= 1 r)) (make-bomb (make-point row col)) (make-land (make-point row col) #f))))
 
-; generate-row: Number Number Number -> ListOf GameTile
-; randomly generates a row of game tiles where the number of bombs in the row do not exceeding the given limit
 (define (generate-row row col bomb-limit)
   (local [(define new-tile (if (= bomb-limit 0) (make-land (make-point row col) #f) (generate-random row col)))
           (define new-limit (if (or (= bomb-limit 0) (land? new-tile)) bomb-limit (- bomb-limit 1)))]
@@ -43,17 +26,13 @@
       [(= col 0) '()]
       [(> col 0) (cons new-tile (generate-row row (- col 1) new-limit))])))
 
-; count-bombs: ListOf GameTile -> Number
-; counts number of bombs in the given list
 (define (count-bombs row)
   (foldr (lambda (tile acc) (if (bomb? tile) (+ 1 acc) acc)) 0 row))
+
 (check-expect (count-bombs (list BOMB-1 BOMB-2)) 2)
 (check-expect (count-bombs '()) 0)
 (check-expect (count-bombs (list LAND-2 BOMB-1 LAND-1)) 1)
 
-; generate-board: Number Number Number -> ListOf ListOf GameTile
-; makes a new randomized board with specified number of rows and columns,
-; and makes sure the max number of bombs does not exceed the limit
 (define (generate-board r c bomb-limit)
   (local [(define new-row (generate-row r c bomb-limit))
           (define new-limit (if (= bomb-limit 0) bomb-limit (- bomb-limit (count-bombs new-row))))]
@@ -61,28 +40,23 @@
       [(= r 0) '()]
       [(> r 0) (cons new-row (generate-board (- r 1) c new-limit))])))
 
-; get-possible-neighbors: Number Number -> ListOf Point
-; makes a list of all possible neighbors, including out of bounds neighbors, surrounding the given point
 (define (get-possible-neighbors row col)
-  (list (make-point (- row 1) (- col 1))
+  (cons (make-point (- row 1) (- col 1))
         (make-point (- row 1) col)
         (make-point (- row 1) (+ col 1))
         (make-point row (- col 1))
         (make-point row (+ col 1))
         (make-point (+ row 1) (- col 1))
         (make-point (+ row 1) col)
-        (make-point (+ row 1) (+ col 1))))
+        (make-point (+ row 1) (+ col 1))
+        '()))
 
-; same-point: GameTile Number Number -> Boolean
-; checks whether the given tile is located at the given row and column number
 (define (same-point tile row col)
   (local [(define selector (if (bomb? tile) bomb-pt land-pt))]
   (and (= row (point-row (selector tile))) (= col (point-col (selector tile))))))
 (check-expect (same-point BOMB-1 1 2) #f)
 (check-expect (same-point LAND-1 1 2) #t)
 
-; same-row: GameTile Number -> Boolean
-; checks whether the given tile is located at the given row
 (define (same-row tile row)
   (cond
     [(bomb? tile) (= row (point-row (bomb-pt tile)))]
@@ -90,8 +64,6 @@
 (check-expect (same-row BOMB-1 2) #f)
 (check-expect (same-row LAND-1 1) #t)
 
-; is-bomb: Number Number ListOf ListOf GameTile
-; checks if grid contains a bomb at the given position 
 (define (is-bomb row col grid)
   (local [(define (bomb-row row col row-lst)
             (ormap (lambda (tile) (and (same-point tile row col) (bomb? tile))) row-lst))]
@@ -101,8 +73,7 @@
                       (bomb-row row col (first grid))
                       (is-bomb row col (rest grid)))])))
 
-; num-bombs: Number Number -> Number
-; finds number of bombs around the tile at the given position
-(define (num-bombs row col grid)
+#|(define (num-bombs row col)
   (local [(define neighbors (get-possible-neighbors row col))]
-    (foldr (lambda (pt acc) (if (is-bomb (point-row pt) (point-col pt) grid) (+ 1 acc) acc)) 0 neighbors)))
+    (foldr 
+|#
